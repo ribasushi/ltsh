@@ -39,6 +39,7 @@ func main() {
 		exportChainCmd,
 		consensusCmd,
 		serveDealStatsCmd,
+		exportDealLifecyclesCmd,
 		syncCmd,
 		stateTreePruneCmd,
 		datastoreCmd,
