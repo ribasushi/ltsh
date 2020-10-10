@@ -38,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainBitswap {
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
@@ -77,22 +77,19 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 }
 
 func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
+
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	blocks, err := r.Datastore("/chain")
 	if err != nil {
 		return nil, err
 	}
 
-	bs := blockstore.NewBlockstore(blocks)
-	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
-
-	return cbs, nil
-}
-
-func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
-	return blockstore.NewGCBlockstore(bs, gcl)
+	return blockstore.CachedBlockstore(
+		ctx,
+		blockstore.NewBlockstore(blocks),
+		blockstore.DefaultCacheOpts(),
+	)
 }
 
 func ChainBlockService(bs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
