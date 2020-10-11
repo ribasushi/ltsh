@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/sqlblockstore"
 	"github.com/filecoin-project/lotus/metrics"
 
 	"go.opencensus.io/stats"
@@ -193,7 +194,19 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 		}
 
 		cs.bestTips.Pub(notif, "headchange")
-		return nil
+
+		var blockCids []string
+		newHead := app[len(app)-1]
+		for _, c := range newHead.Cids() {
+			blockCids = append(blockCids, c.String())
+		}
+		_, err := sqlblockstore.DB().Exec(
+			context.Background(),
+			"INSERT INTO heads (height, blockCids) VALUES ($1, $2)",
+			newHead.Height(),
+			strings.Join(blockCids, " "),
+		)
+		return err
 	}
 
 	hcmetric := func(rev, app []*types.TipSet) error {

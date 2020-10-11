@@ -13,6 +13,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/sqlblockstore"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -23,8 +24,6 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -260,10 +259,6 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.Blockstore
-	bsErr  error
-	bsOnce sync.Once
-
 	storageLk sync.Mutex
 	configLk  sync.Mutex
 }
@@ -286,13 +281,6 @@ func (fsr *fsLockedRepo) Close() error {
 		}
 	}
 
-	// type assertion will return ok=false if fsr.bs is nil altogether.
-	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
-		if err := c.Close(); err != nil {
-			return xerrors.Errorf("could not close blockstore: %w", err)
-		}
-	}
-
 	err = fsr.closer.Close()
 	fsr.closer = nil
 	return err
@@ -304,30 +292,7 @@ func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockst
 		return nil, ErrInvalidBlockstoreDomain
 	}
 
-	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
-
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
-	})
-
-	return fsr.bs, fsr.bsErr
+	return sqlblockstore.NewBlockStore()
 }
 
 // join joins path elements with fsr.path
