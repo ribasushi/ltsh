@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -253,9 +254,12 @@ type fsLockedRepo struct {
 	closer     io.Closer
 	readonly   bool
 
-	ds     map[string]datastore.Batching
-	dsErr  error
-	dsOnce sync.Once
+	ds          map[string]datastore.Batching
+	dsErr       error
+	dsOnce      sync.Once
+	chainBs     blockstore.Blockstore
+	chainBsErr  error
+	chainBsOnce sync.Once
 
 	storageLk sync.Mutex
 	configLk  sync.Mutex
