@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/sqlblockstore"
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 
@@ -69,6 +70,10 @@ func (fsr *fsLockedRepo) openDatastores(readonly bool) (map[string]datastore.Bat
 	return out, nil
 }
 
+func (fsr *fsLockedRepo) ChainBlockstore() (blockstore.Blockstore, error) {
+	return sqlblockstore.NewBlockStore()
+}
+
 func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
 		fsr.ds, fsr.dsErr = fsr.openDatastores(fsr.readonly)
@@ -82,28 +87,4 @@ func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 		return ds, nil
 	}
 	return nil, xerrors.Errorf("no such datastore: %s", ns)
-}
-
-var tempGlobalChainBS blockstore.Blockstore
-
-func (fsr *fsLockedRepo) ChainBlockstore() (blockstore.Blockstore, error) {
-
-	if tempGlobalChainBS == nil {
-
-		opts := badger.DefaultOptions
-		opts.GcInterval = 0 // disable GC for chain datastore
-
-		opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
-			WithValueThreshold(1 << 10)
-
-		ds, err := badger.NewDatastore(fsr.join(fsDatastore, "chain"), &opts)
-
-		if err != nil {
-			return nil, err
-		}
-
-		tempGlobalChainBS = blockstore.NewBlockstore(ds)
-	}
-
-	return tempGlobalChainBS, nil
 }
