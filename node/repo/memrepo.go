@@ -15,6 +15,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -373,4 +374,8 @@ func (lmem *lockedMemRepo) Delete(name string) error {
 	}
 	delete(lmem.mem.keystore, name)
 	return nil
+}
+
+func (lmem *lockedMemRepo) ChainBlockstore() (blockstore.Blockstore, error) {
+	panic("Unimplemented")
 }

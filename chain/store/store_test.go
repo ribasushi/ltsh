@@ -50,7 +50,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bds, err := lr.Datastore("/chain")
+	bs, err := lr.ChainBlockstore()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -59,8 +59,6 @@ func BenchmarkGetRandomness(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-
-	bs := blockstore.NewBlockstore(bds)
 
 	cs := store.NewChainStore(bs, mds, nil, nil)
 

@@ -35,7 +35,6 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -399,7 +398,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	ds, err := lr.Datastore("/chain")
+	bs, err := lr.ChainBlockstore()
 	if err != nil {
 		return err
 	}
@@ -408,8 +407,6 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	if err != nil {
 		return err
 	}
-
-	bs := blockstore.NewBlockstore(ds)
 
 	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 	if err != nil {

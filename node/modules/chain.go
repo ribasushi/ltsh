@@ -80,14 +80,14 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocks, err := r.Datastore("/chain")
+	bs, err := r.ChainBlockstore()
 	if err != nil {
 		return nil, err
 	}
 
 	return blockstore.CachedBlockstore(
 		ctx,
-		blockstore.NewBlockstore(blocks),
+		bs,
 		blockstore.DefaultCacheOpts(),
 	)
 }

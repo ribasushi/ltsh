@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -71,7 +70,7 @@ var exportChainCmd = &cli.Command{
 
 		defer fi.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore("/chain")
+		bs, err := lr.ChainBlockstore()
 		if err != nil {
 			return err
 		}
@@ -81,9 +80,8 @@ var exportChainCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
-
 		cs := store.NewChainStore(bs, mds, nil, nil)
+
 		if err := cs.Load(); err != nil {
 			return err
 		}

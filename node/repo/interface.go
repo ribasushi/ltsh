@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -36,6 +37,9 @@ type LockedRepo interface {
 
 	// Returns datastore defined in this repo.
 	Datastore(namespace string) (datastore.Batching, error)
+
+	// Returns the chain blockstore for this repo
+	ChainBlockstore() (blockstore.Blockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -168,7 +167,7 @@ var chainBalanceStateCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.ChainBlockstore()
 		if err != nil {
 			return err
 		}
@@ -177,8 +176,6 @@ var chainBalanceStateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		bs := blockstore.NewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
@@ -382,7 +379,7 @@ var chainPledgeCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.ChainBlockstore()
 		if err != nil {
 			return err
 		}
@@ -391,8 +388,6 @@ var chainPledgeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		bs := blockstore.NewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
