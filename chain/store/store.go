@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/golang-lru/arc/v2"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -199,6 +200,30 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 	cs.reorgCh = cs.reorgWorker(ctx, []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
+}
+
+func (cs *ChainStore) TipsetReached(ctx context.Context, ts *types.TipSet) error {
+	bss := []bstore.Blockstore{
+		cs.chainBlockstore,
+		cs.stateBlockstore,
+		cs.chainLocalBlockstore,
+	}
+
+nextbs:
+	for i := range bss {
+
+		for j := 0; j < i; j++ {
+			if bss[i] == bss[j] {
+				continue nextbs
+			}
+		}
+
+		if err := bss[i].Flush(ctx); err != nil {
+			return err
+		}
+	}
+
+	return cs.metadataDs.Sync(ctx, datastore.NewKey(""))
 }
 
 func (cs *ChainStore) Close() error {
@@ -709,6 +734,10 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	} else {
 		log.Warnf("no previous heaviest tipset found, using %s", ts.Cids())
+	}
+
+	if err := cs.TipsetReached(ctx, ts); err != nil {
+		return err
 	}
 
 	return nil
