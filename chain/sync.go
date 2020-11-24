@@ -782,6 +782,9 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 	// best tipset so far
 	untilHeight := known.Height() + 1
 
+	if err := syncer.ChainStore().TipsetReached(ctx, blockSet[len(blockSet)-1]); err != nil {
+		return nil, err
+	}
 	ss.SetHeight(blockSet[len(blockSet)-1].Height())
 
 	var acceptedBlocks []cid.Cid
@@ -871,6 +874,9 @@ loop:
 
 		acceptedBlocks = append(acceptedBlocks, at.Cids()...)
 
+		if err := syncer.ChainStore().TipsetReached(ctx, blks[len(blks)-1]); err != nil {
+			return nil, err
+		}
 		ss.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 		if err := validateParentsKey(blks[len(blks)-1]); err != nil {
@@ -882,6 +888,10 @@ loop:
 	if base.Equals(known) {
 		blockSet = blockSet[:len(blockSet)-1]
 		base = blockSet[len(blockSet)-1]
+	}
+
+	if err := syncer.ChainStore().TipsetReached(ctx, base); err != nil {
+		return nil, err
 	}
 
 	if base.IsChildOf(known) {
@@ -1030,6 +1040,10 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
 	ss := extractSyncState(ctx)
+
+	if err := syncer.ChainStore().TipsetReached(ctx, headers[len(headers)-1]); err != nil {
+		return err
+	}
 	ss.SetHeight(headers[len(headers)-1].Height())
 
 	return syncer.iterFullTipsets(ctx, headers, func(ctx context.Context, fts *store.FullTipSet) error {
@@ -1039,6 +1053,9 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
+		if err := syncer.ChainStore().TipsetReached(ctx, fts.TipSet()); err != nil {
+			return err
+		}
 		stats.Record(ctx, metrics.ChainNodeWorkerHeight.M(int64(fts.TipSet().Height())))
 		ss.SetHeight(fts.TipSet().Height())
 
