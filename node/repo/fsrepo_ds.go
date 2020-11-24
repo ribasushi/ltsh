@@ -30,6 +30,7 @@ func badgerDs(path string, readonly bool) (datastore.Batching, error) {
 	opts.ReadOnly = readonly
 
 	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
+		// WithSyncWrites(false).
 		WithValueThreshold(1 << 10)
 	return badger.NewDatastore(path, &opts)
 }

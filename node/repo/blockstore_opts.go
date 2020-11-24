@@ -11,6 +11,8 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 
 	opts := badgerbs.DefaultOptions(path)
 
+	opts.SyncWrites = false
+
 	// Due to legacy usage of blockstore.Blockstore, over a datastore, all
 	// blocks are prefixed with this namespace. In the future, this can go away,
 	// in order to shorten keys, but it'll require a migration.
