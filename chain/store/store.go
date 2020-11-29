@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/lib/nullcache"
 	"github.com/filecoin-project/lotus/metrics"
 
 	"go.opencensus.io/stats"
@@ -127,7 +128,8 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache
+	// mmCache *lru.ARCCache
+	mmCache nullcache.NullCache
 	tsCache *lru.ARCCache
 
 	vmcalls vm.SyscallBuilder
@@ -140,7 +142,7 @@ type ChainStore struct {
 }
 
 func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
-	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
+	// c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
@@ -157,7 +159,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		metadataDs:           ds,
 		bestTips:             pubsub.New(64),
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
-		mmCache:              c,
+		mmCache:              nullcache.Instance,
 		tsCache:              tsc,
 		vmcalls:              vmcalls,
 		cancelFn:             cancel,
@@ -217,6 +219,14 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 // about *visits*, not only changes) and must be _completely_ lossless and
 // therefore blocking for SQLotus to work sensibly.
 func (cs *ChainStore) NoteTipSetVisit(ctx context.Context, ts *types.TipSet, isHeadChange bool) error {
+
+	// Dumping the tsk cache on every successful height-change allows capturing
+	// sufficiently granular access stats
+	// It is a-ok perf-wise
+	if isHeadChange {
+		cs.tsCache.Purge()
+	}
+
 	return nil
 }
 
