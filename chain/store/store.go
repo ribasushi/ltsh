@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/chainstore/annotated"
+	"github.com/filecoin-project/lotus/lib/nullcache"
 	"github.com/filecoin-project/lotus/metrics"
 
 	"go.opencensus.io/stats"
@@ -128,7 +129,8 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache
+	// mmCache *lru.ARCCache
+	mmCache nullcache.NullCache
 	tsCache *lru.ARCCache
 
 	vmcalls vm.SyscallBuilder
@@ -142,7 +144,7 @@ type ChainStore struct {
 
 // localbs is guaranteed to fail Get* if requested block isn't stored locally
 func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
-	mmCache, _ := lru.NewARC(DefaultMsgMetaCacheSize)
+	// mmCache, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsCache, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
@@ -164,7 +166,7 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
-		mmCache:  mmCache,
+		mmCache:  nullcache.Instance,
 		tsCache:  tsCache,
 		vmcalls:  vmcalls,
 		cancelFn: cancel,
@@ -220,7 +222,13 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 }
 
 func (cs *ChainStore) SetCurrentTipset(ctx context.Context, ts *types.TipSet) error {
-	_, err := cs.localbs.SetCurrentTipset(ctx, ts)
+	didChange, err := cs.localbs.SetCurrentTipset(ctx, ts)
+
+	if didChange && err == nil {
+		// Dumping the tsk cache on every successful height-change allows capturing proper access stats
+		// it is a-ok perf-wise
+		cs.tsCache.Purge()
+	}
 
 	return err
 }
