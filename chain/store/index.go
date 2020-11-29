@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/filecoin-project/lotus/lib/nullcache"
 	"golang.org/x/xerrors"
 )
 
@@ -25,7 +25,8 @@ func init() {
 }
 
 type ChainIndex struct {
-	skipCache *lru.ARCCache
+	// skipCache *lru.ARCCache
+	skipCache nullcache.NullCache
 
 	loadTipSet loadTipSetFunc
 
@@ -34,9 +35,9 @@ type ChainIndex struct {
 type loadTipSetFunc func(types.TipSetKey) (*types.TipSet, error)
 
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
-	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
+	// sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
 	return &ChainIndex{
-		skipCache:  sc,
+		skipCache:  nullcache.Instance,
 		loadTipSet: lts,
 		skipLength: 20,
 	}
