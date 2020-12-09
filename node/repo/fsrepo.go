@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -24,8 +23,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/chainstore/annotated"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -307,25 +306,28 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 
 	fsr.bsOnce.Do(func() {
 		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
+
+		// Due to how the vm works a read-only chainstore is not really a thing
+		// readonly := fsr.readonly
 
 		if err := os.MkdirAll(path, 0755); err != nil {
 			fsr.bsErr = err
 			return
 		}
 
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
+		fsr.bs, fsr.bsErr = annotated.NewPgChainStore(ctx)
 
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
+		// opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		// if err != nil {
+		// 	fsr.bsErr = err
+		// 	return
+		// }
+
+		// bs, err := badgerbs.Open(opts)
+		// if err != nil {
+		// 	fsr.bsErr = err
+		// 	return
+		// }
 	})
 
 	return fsr.bs, fsr.bsErr

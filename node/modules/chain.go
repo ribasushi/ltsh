@@ -77,18 +77,20 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 }
 
 func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainRawBlockstore, error) {
-	bs, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.BlockstoreChain)
-	if err != nil {
-		return nil, err
-	}
+	return r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.BlockstoreChain)
 
-	// TODO potentially replace this cached blockstore by a CBOR cache.
-	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
+	// bs, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.BlockstoreChain)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return cbs, nil
+	// // TODO potentially replace this cached blockstore by a CBOR cache.
+	// cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// return cbs, nil
 }
 
 func ChainBlockService(bs dtypes.ChainRawBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
