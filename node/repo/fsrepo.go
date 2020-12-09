@@ -23,10 +23,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
+	"github.com/filecoin-project/lotus/chain/store/tstracker"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -313,26 +313,28 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 	}
 
 	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
+		// path := fsr.join(filepath.Join(fsDatastore, "chain"))
+		// readonly := fsr.readonly
 
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
+		// if err := os.MkdirAll(path, 0755); err != nil {
+		// 	fsr.bsErr = err
+		// 	return
+		// }
 
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
+		// opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		// if err != nil {
+		// 	fsr.bsErr = err
+		// 	return
+		// }
 
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = blockstore.WrapIDStore(bs)
+		// bs, err := badgerbs.Open(opts)
+		// if err != nil {
+		// 	fsr.bsErr = err
+		// 	return
+		// }
+		// fsr.bs = blockstore.WrapIDStore(bs)
+
+		fsr.bs, fsr.bsErr = tstracker.NewTrackingPgChainstoreFromEnv(ctx, fsr.readonly)
 	})
 
 	return fsr.bs, fsr.bsErr

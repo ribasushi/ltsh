@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/store/tstracker"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/nullcache"
@@ -109,10 +110,10 @@ type HeadChangeEvt struct {
 //   2. a block => messages references cache.
 type ChainStore struct {
 	chainBlockstore bstore.Blockstore
-	stateBlockstore bstore.Blockstore
+	stateBlockstore tstracker.TrackingChainstore
 	metadataDs      dstore.Batching
 
-	chainLocalBlockstore bstore.Blockstore
+	chainLocalBlockstore tstracker.TrackingChainstore
 
 	heaviestLk sync.RWMutex
 	heaviest   *types.TipSet
@@ -148,14 +149,26 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		j = journal.NilJournal()
 	}
 
+	tbs, castOk := stateBs.(tstracker.TrackingChainstore)
+	if !castOk {
+		// Panic because there's no way to return an error
+		log.Panicf("unexpected chain blockstore provided: %#v", stateBs)
+	}
+
+	// SQLotus needs access to every single block in a single place
+	//
+	// unwrap the fallback store in case one is configured and ensure
+	// we did not activate a splitstore by mistake
+	if localBs, _ := bstore.UnwrapFallbackStore(chainBs); localBs != stateBs {
+		// Panic because there's no way to return an error
+		log.Panicf("chain %#v and state %#v can not be separate blockstores", localBs, stateBs)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
-	// unwraps the fallback store in case one is configured.
-	// some methods _need_ to operate on a local blockstore only.
-	localbs, _ := bstore.UnwrapFallbackStore(chainBs)
 	cs := &ChainStore{
-		chainBlockstore:      chainBs,
-		stateBlockstore:      stateBs,
-		chainLocalBlockstore: localbs,
+		chainBlockstore:      chainBs, // potentially fallback-wrapped version
+		stateBlockstore:      tbs,
+		chainLocalBlockstore: tbs,
 		metadataDs:           ds,
 		bestTips:             pubsub.New(64),
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
@@ -220,14 +233,16 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 // therefore blocking for SQLotus to work sensibly.
 func (cs *ChainStore) NoteTipSetVisit(ctx context.Context, ts *types.TipSet, isHeadChange bool) error {
 
+	err := cs.chainLocalBlockstore.StoreTipSetVist(ctx, ts, isHeadChange)
+
 	// Dumping the tsk cache on every successful height-change allows capturing
 	// sufficiently granular access stats
 	// It is a-ok perf-wise
-	if isHeadChange {
+	if err == nil && isHeadChange {
 		cs.tsCache.Purge()
 	}
 
-	return nil
+	return err
 }
 
 func (cs *ChainStore) Close() error {
