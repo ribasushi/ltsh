@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/chainstore/annotated"
 	"github.com/filecoin-project/lotus/metrics"
 
 	"go.opencensus.io/stats"
@@ -107,8 +108,8 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	bs      bstore.Blockstore
-	localbs bstore.Blockstore
+	bs      annotated.Chainstore
+	localbs annotated.Chainstore
 	ds      dstore.Batching
 
 	localviewer bstore.Viewer
@@ -147,10 +148,19 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 		j = journal.NilJournal()
 	}
 
+	if bs != localbs {
+		log.Panicf("not yet able to handle a splitstore: %v != %v", bs, localbs)
+	}
+
+	abs, castOk := bs.(annotated.Chainstore)
+	if !castOk {
+		log.Panicf("unexpected blockstore provided: %#v", bs)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cs := &ChainStore{
-		bs:       bs,
-		localbs:  localbs,
+		bs:       abs,
+		localbs:  abs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
@@ -207,6 +217,12 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 	cs.reorgCh = cs.reorgWorker(ctx, []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
+}
+
+func (cs *ChainStore) SetCurrentTipset(ctx context.Context, ts *types.TipSet) error {
+	_, err := cs.localbs.SetCurrentTipset(ctx, ts)
+
+	return err
 }
 
 func (cs *ChainStore) Close() error {
@@ -495,6 +511,10 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
 	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
+
+	if err := cs.SetCurrentTipset(ctx, ts); err != nil {
+		return err
+	}
 
 	if cs.heaviest != nil { // buf
 		if len(cs.reorgCh) > 0 {

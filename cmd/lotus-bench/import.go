@@ -20,7 +20,6 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
-	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -236,13 +235,13 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		ctx := metricsi.CtxScope(context.Background(), "lotus")
-		cacheOpts := blockstore.DefaultCacheOpts()
-		cacheOpts.HasBloomFilterSize = 0
-		bs, err = blockstore.CachedBlockstore(ctx, bs, cacheOpts)
-		if err != nil {
-			return err
-		}
+		// ctx := metricsi.CtxScope(context.Background(), "lotus")
+		// cacheOpts := blockstore.DefaultCacheOpts()
+		// cacheOpts.HasBloomFilterSize = 0
+		// bs, err = blockstore.CachedBlockstore(ctx, bs, cacheOpts)
+		// if err != nil {
+		// 	return err
+		// }
 
 		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {

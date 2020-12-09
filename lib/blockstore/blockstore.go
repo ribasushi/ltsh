@@ -15,8 +15,6 @@
 package blockstore
 
 import (
-	"context"
-
 	ds "github.com/ipfs/go-datastore"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -48,6 +46,7 @@ type Viewer = blockstore.Viewer
 type CacheOpts = blockstore.CacheOpts
 
 var ErrNotFound = blockstore.ErrNotFound
+var ErrHashMismatch = blockstore.ErrHashMismatch
 
 func DefaultCacheOpts() CacheOpts {
 	return CacheOpts{
@@ -57,10 +56,10 @@ func DefaultCacheOpts() CacheOpts {
 	}
 }
 
-func CachedBlockstore(ctx context.Context, bs Blockstore, opts CacheOpts) (Blockstore, error) {
-	bs, err := blockstore.CachedBlockstore(ctx, bs, opts)
-	if err != nil {
-		return nil, err
-	}
-	return WrapIDStore(bs), nil
-}
+// func CachedBlockstore(ctx context.Context, bs Blockstore, opts CacheOpts) (Blockstore, error) {
+// 	bs, err := blockstore.CachedBlockstore(ctx, bs, opts)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return WrapIDStore(bs), nil
+// }

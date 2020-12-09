@@ -875,6 +875,9 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	lastState := tschain[len(tschain)-1].ParentState()
 	for i := len(tschain) - 1; i >= 0; i-- {
 		cur := tschain[i]
+		if err := sm.ChainStore().SetCurrentTipset(ctx, cur); err != nil {
+			return err
+		}
 		log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
 		if cur.ParentState() != lastState {
 			return xerrors.Errorf("tipset chain had state mismatch at height %d", cur.Height())
