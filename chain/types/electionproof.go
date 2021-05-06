@@ -172,6 +172,11 @@ func (p *poiss) next() *big.Int {
 	return p.icdf
 }
 
+var max256 = new(big.Int).Sub(
+	new(big.Int).Lsh(big.NewInt(1), 256),
+	big.NewInt(1),
+)
+
 // ComputeWinCount uses VRFProof to compute number of wins
 // The algorithm is based on Algorand's Sortition with Binomial distribution
 // replaced by Poisson distribution.
@@ -195,11 +200,42 @@ func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) int64 
 
 	p, rhs := newPoiss(lam)
 
+	powRatioX5 := new(big.Float).SetRat(
+		new(big.Rat).SetFrac(
+			new(big.Int).Mul(big.NewInt(5), power.Int),
+			totalPower.Int,
+		),
+	).Text('f', 12)
+
+	hoursPerWin := new(big.Float).SetRat(
+		new(big.Rat).SetFrac(
+			totalPower.Int,
+			new(big.Int).Mul(big.NewInt(120*5), power.Int),
+		),
+	).Text('f', 2)
+
 	var j int64
+	emitLog("Run", powRatioX5, hoursPerWin, j, lhs, rhs, power.Int, totalPower.Int)
 	for lhs.Cmp(rhs) < 0 && j < MaxWinCount {
 		rhs = p.next()
 		j++
+		emitLog("Win", powRatioX5, hoursPerWin, j, lhs, rhs, power.Int, totalPower.Int)
 	}
 
 	return j
+}
+
+func emitLog(stage, powRatioX5, hoursPerWin string, winCnt int64, lhs, rhs, minerPow, netPow *big.Int) {
+	log.Infow(
+		"CWC "+stage, "winCnt", winCnt,
+		"vrfHashRat256", ratio256(lhs), "targetRat256", ratio256(rhs), "powerRatX5", powRatioX5, "avgHoursPerWin", hoursPerWin,
+		"powMiner", minerPow.String(), "powTotal", netPow.String(),
+		"vrfHash", lhs.String(), "target", rhs.String(), "max", max256.String(),
+	)
+}
+
+func ratio256(i *big.Int) string {
+	return new(big.Float).SetRat(
+		new(big.Rat).SetFrac(i, max256),
+	).Text('f', 12)
 }
