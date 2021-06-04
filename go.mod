@@ -95,7 +95,9 @@ require (
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
-	github.com/ipld/go-ipld-prime v0.9.1-0.20210324083106-dc342a9917db
+	github.com/ipld/go-codec-dagpb v1.2.0
+	github.com/ipld/go-ipld-prime v0.10.0
+	github.com/ipld/go-ipld-selector-text-lite v0.0.0-20210603153726-3feaa7573d47
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
 	github.com/libp2p/go-buffer-pool v0.0.2

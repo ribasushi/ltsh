@@ -22,14 +22,19 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
 	mdagipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipld/go-car"
+	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
@@ -43,7 +48,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-multistore"
@@ -63,6 +67,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
+
+var log = logging.Logger("client")
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
@@ -723,9 +729,27 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return err
 		}*/
 
+		// FIXME - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.4.0/shared/selectors.go#L11-L16
+		// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
+		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+		selspec := ssb.ExploreRecursive(
+			selector.RecursionLimitNone(),
+			ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+		)
+
+		if order.DatamodelPathSelector != nil {
+			var err error
+			selspec, err = textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, selspec)
+			if err != nil {
+				finish(xerrors.Errorf("failed to parse selector '%s': %w", *order.DatamodelPathSelector, err))
+				return
+			}
+			log.Infof("partial retrieval of datamodel-path-selector %s/*", *order.DatamodelPathSelector)
+		}
+
 		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, selspec.Node(), order.Piece, order.UnsealPrice)
 		if err != nil {
 			finish(xerrors.Errorf("Error in retrieval params: %s", err))
 			return
@@ -800,13 +824,38 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	rdag := store.DAGService()
 
+	root := order.Root
+	if order.DatamodelPathSelector != nil {
+		// no err check - we just compiled this before starting, but now we do not wrap a `*`
+		selspec, _ := textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, nil) //nolint:errcheck
+		if err := utils.TraverseDag(
+			ctx,
+			rdag,
+			root,
+			selspec.Node(),
+			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+				if r == traversal.VisitReason_SelectionMatch {
+					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+					if !castOK {
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link.String())
+					}
+					root = cidLnk.Cid
+				}
+				return nil
+			},
+		); err != nil {
+			finish(xerrors.Errorf("Finding partial retrieval sub-root: %w", err))
+			return
+		}
+	}
+
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			finish(err)
 			return
 		}
-		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, rdag, []cid.Cid{root}, f)
 		if err != nil {
 			finish(err)
 			return
@@ -815,7 +864,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 
-	nd, err := rdag.Get(ctx, order.Root)
+	nd, err := rdag.Get(ctx, root)
 	if err != nil {
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
