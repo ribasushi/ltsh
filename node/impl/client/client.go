@@ -21,7 +21,7 @@ import (
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
-	ipld "github.com/ipfs/go-ipld-format"
+	mdagipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipfs/go-unixfs/importer/balanced"
@@ -42,7 +42,6 @@ import (
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -409,7 +408,7 @@ func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 
 	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Blockstore, offline.Exchange(a.Imports.Blockstore)))
 	_, err := offExch.Get(ctx, root)
-	if err == ipld.ErrNotFound {
+	if err == mdagipld.ErrNotFound {
 		return false, nil
 	}
 	if err != nil {
@@ -519,7 +518,7 @@ func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, erro
 		return cid.Cid{}, err
 	}
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
+	bufferedDS := mdagipld.NewBufferedDAG(ctx, st.DAG)
 
 	prefix, err := merkledag.PrefixForCidVersion(1)
 	if err != nil {
@@ -587,7 +586,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
-func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) error {
 	cerr := make(chan error)
 	go func() {
 		err := a.Retrieval.CancelDeal(dealID)
@@ -641,7 +640,7 @@ type retrievalSubscribeEvent struct {
 	state rm.ClientDealState
 }
 
-func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
+func readSubscribeEvents(ctx context.Context, dealID rm.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
 	for {
 		var subscribeEvent retrievalSubscribeEvent
 		select {
@@ -700,7 +699,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 				return
 			}
 
-			order.MinerPeer = &retrievalmarket.RetrievalPeer{
+			order.MinerPeer = &rm.RetrievalPeer{
 				ID:      *mi.PeerId,
 				Address: order.Miner,
 			}
@@ -839,7 +838,7 @@ func (mrs *multiStoreRetrievalStore) StoreID() *multistore.StoreID {
 	return &mrs.storeID
 }
 
-func (mrs *multiStoreRetrievalStore) DAGService() ipld.DAGService {
+func (mrs *multiStoreRetrievalStore) DAGService() mdagipld.DAGService {
 	return mrs.store.DAG
 }
 
@@ -956,7 +955,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 		return err
 	}
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
+	bufferedDS := mdagipld.NewBufferedDAG(ctx, st.DAG)
 	c, err := a.clientImport(ctx, ref, st)
 
 	if err != nil {
@@ -1020,7 +1019,7 @@ func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multisto
 		return result.Roots[0], nil
 	}
 
-	bufDs := ipld.NewBufferedDAG(ctx, store.DAG)
+	bufDs := mdagipld.NewBufferedDAG(ctx, store.DAG)
 
 	prefix, err := merkledag.PrefixForCidVersion(1)
 	if err != nil {
