@@ -196,7 +196,7 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-const F3Enabled = true
+const F3Enabled = false
 
 //go:embed f3manifest_mainnet.json
 var F3ManifestBytes []byte

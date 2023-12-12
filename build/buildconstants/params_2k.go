@@ -214,7 +214,7 @@ const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
 
-var F3Enabled = true
+var F3Enabled = false
 
 //go:embed f3manifest_2k.json
 var F3ManifestBytes []byte

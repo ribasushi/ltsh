@@ -382,6 +382,9 @@ func TestForkPreMigration(t *testing.T) {
 			t.Fatalf("failed to restore LOTUS_DISABLE_PRE_MIGRATIONS: %v", err)
 		}
 	}()
+	if err := os.Setenv("LOTUS_DISABLE_PRE_MIGRATIONS", "0"); err != nil {
+		t.Fatalf("failed to force LOTUS_DISABLE_PRE_MIGRATIONS: %v", err)
+	}
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	cg, err := gen.NewGenerator()
