@@ -658,9 +658,12 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	f3Ds, err := lr.Datastore(ctx, "/f3")
-	if err != nil {
-		return xerrors.Errorf("failed to open f3 datastore: %w", err)
+	var f3Ds datastore.Batching
+	if build.IsF3Enabled() {
+		f3Ds, err = lr.Datastore(ctx, "/f3")
+		if err != nil {
+			return xerrors.Errorf("failed to open f3 datastore: %w", err)
+		}
 	}
 
 	j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents())

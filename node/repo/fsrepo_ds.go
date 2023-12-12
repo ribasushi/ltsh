@@ -10,6 +10,8 @@ import (
 	measure "github.com/ipfs/go-ds-measure"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
@@ -55,6 +57,11 @@ func (fsr *fsLockedRepo) openDatastores(readonly bool) (map[string]datastore.Bat
 	out := map[string]datastore.Batching{}
 
 	for p, ctor := range fsDatastores {
+
+		if !build.IsF3Enabled() && p == "f3" {
+			continue
+		}
+
 		prefix := datastore.NewKey(p)
 
 		// TODO: optimization: don't init datastores we don't need

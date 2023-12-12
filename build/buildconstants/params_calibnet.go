@@ -198,7 +198,7 @@ const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
+const F3Enabled = false
 
 //go:embed f3manifest_calibnet.json
 var F3ManifestBytes []byte

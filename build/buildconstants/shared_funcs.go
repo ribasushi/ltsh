@@ -80,6 +80,9 @@ func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
 }
 
 func MustParseID(id string) peer.ID {
+	if id == "" {
+		return peer.ID("")
+	}
 	p, err := peer.Decode(id)
 	if err != nil {
 		panic(err)
