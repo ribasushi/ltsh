@@ -156,7 +156,7 @@ const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
+const F3Enabled = false
 
 //go:embed f3manifest_butterfly.json
 var F3ManifestBytes []byte
