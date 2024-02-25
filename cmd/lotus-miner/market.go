@@ -16,6 +16,7 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -819,7 +821,7 @@ var transfersListCmd = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				lcli.OutputDataTransferChannels(tm.Screen, channels, verbose, completed, showFailed)
+				outputDataTransferChannels(tm.Screen, channels, verbose, completed, showFailed)
 
 				tm.Flush()
 
@@ -844,9 +846,108 @@ var transfersListCmd = &cli.Command{
 				}
 			}
 		}
-		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, showFailed)
+		outputDataTransferChannels(os.Stdout, channels, verbose, completed, showFailed)
 		return nil
 	},
+}
+
+// OutputDataTransferChannels generates table output for a list of channels
+func outputDataTransferChannels(out io.Writer, channels []api.DataTransferChannel, verbose, completed, showFailed bool) {
+	sort.Slice(channels, func(i, j int) bool {
+		return channels[i].TransferID < channels[j].TransferID
+	})
+
+	var receivingChannels, sendingChannels []api.DataTransferChannel
+	for _, channel := range channels {
+		if !completed && channel.Status == datatransfer.Completed {
+			continue
+		}
+		if !showFailed && (channel.Status == datatransfer.Failed || channel.Status == datatransfer.Cancelled) {
+			continue
+		}
+		if channel.IsSender {
+			sendingChannels = append(sendingChannels, channel)
+		} else {
+			receivingChannels = append(receivingChannels, channel)
+		}
+	}
+
+	fmt.Fprintf(out, "Sending Channels\n\n")
+	w := tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Sending To"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range sendingChannels {
+		w.Write(toChannelOutput("Sending To", channel, verbose))
+	}
+	w.Flush(out) //nolint:errcheck
+
+	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	w = tablewriter.New(tablewriter.Col("ID"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("Receiving From"),
+		tablewriter.Col("Root Cid"),
+		tablewriter.Col("Initiated?"),
+		tablewriter.Col("Transferred"),
+		tablewriter.Col("Voucher"),
+		tablewriter.NewLineCol("Message"))
+	for _, channel := range receivingChannels {
+		w.Write(toChannelOutput("Receiving From", channel, verbose))
+	}
+	w.Flush(out) //nolint:errcheck
+}
+
+func channelStatusString(status datatransfer.Status) string {
+	s := datatransfer.Statuses[status]
+	switch status {
+	case datatransfer.Failed, datatransfer.Cancelled:
+		return color.RedString(s)
+	case datatransfer.Completed:
+		return color.GreenString(s)
+	default:
+		return s
+	}
+}
+
+func toChannelOutput(otherPartyColumn string, channel api.DataTransferChannel, verbose bool) map[string]interface{} {
+	rootCid := channel.BaseCID.String()
+	otherParty := channel.OtherPeer.String()
+	if !verbose {
+		rootCid = ellipsis(rootCid, 8)
+		otherParty = ellipsis(otherParty, 8)
+	}
+
+	initiated := "N"
+	if channel.IsInitiator {
+		initiated = "Y"
+	}
+
+	voucher := channel.Voucher
+	if len(voucher) > 40 && !verbose {
+		voucher = ellipsis(voucher, 37)
+	}
+
+	return map[string]interface{}{
+		"ID":             channel.TransferID,
+		"Status":         channelStatusString(channel.Status),
+		otherPartyColumn: otherParty,
+		"Root Cid":       rootCid,
+		"Initiated?":     initiated,
+		"Transferred":    units.BytesSize(float64(channel.Transferred)),
+		"Voucher":        voucher,
+		"Message":        channel.Message,
+	}
+}
+
+func ellipsis(s string, length int) string {
+	if length > 0 && len(s) > length {
+		return "..." + s[len(s)-length:]
+	}
+	return s
 }
 
 var transfersDiagnosticsCmd = &cli.Command{

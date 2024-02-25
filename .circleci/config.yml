@@ -573,12 +573,6 @@ workflows:
           suite: itest-deals_512mb
           target: "./itests/deals_512mb_test.go"
       - test:
-          name: test-itest-deals_anycid
-          requires:
-            - build
-          suite: itest-deals_anycid
-          target: "./itests/deals_anycid_test.go"
-      - test:
           name: test-itest-deals_concurrent
           requires:
             - build
@@ -610,18 +604,6 @@ workflows:
           suite: itest-deals_padding
           target: "./itests/deals_padding_test.go"
       - test:
-          name: test-itest-deals_partial_retrieval_dm-level
-          requires:
-            - build
-          suite: itest-deals_partial_retrieval_dm-level
-          target: "./itests/deals_partial_retrieval_dm-level_test.go"
-      - test:
-          name: test-itest-deals_partial_retrieval
-          requires:
-            - build
-          suite: itest-deals_partial_retrieval
-          target: "./itests/deals_partial_retrieval_test.go"
-      - test:
           name: test-itest-deals_power
           requires:
             - build
@@ -639,12 +621,6 @@ workflows:
             - build
           suite: itest-deals_publish
           target: "./itests/deals_publish_test.go"
-      - test:
-          name: test-itest-deals_remote_retrieval
-          requires:
-            - build
-          suite: itest-deals_remote_retrieval
-          target: "./itests/deals_remote_retrieval_test.go"
       - test:
           name: test-itest-deals_retry_deal_no_funds
           requires:

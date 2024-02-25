@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -25,16 +23,6 @@ const (
 	// configured by the user.
 	RetrievalPricingExternalMode = "external"
 )
-
-// MaxTraversalLinks configures the maximum number of links to traverse in a DAG while calculating
-// CommP and traversing a DAG with graphsync; invokes a budget on DAG depth and density.
-var MaxTraversalLinks uint64 = 32 * (1 << 20)
-
-func init() {
-	if envMaxTraversal, err := strconv.ParseUint(os.Getenv("LOTUS_MAX_TRAVERSAL_LINKS"), 10, 64); err == nil {
-		MaxTraversalLinks = envMaxTraversal
-	}
-}
 
 func (b *BatchFeeConfig) FeeForSectors(nSectors int) abi.TokenAmount {
 	return big.Add(big.Int(b.Base), big.Mul(big.NewInt(int64(nSectors)), big.Int(b.PerSector)))
@@ -88,10 +76,6 @@ func DefaultFullNode() *FullNode {
 		Common: defCommon(),
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee,
-		},
-		Client: Client{
-			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
-			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 		},
 		Chainstore: Chainstore{
 			EnableSplitstore: false,

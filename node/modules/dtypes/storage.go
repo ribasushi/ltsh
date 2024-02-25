@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 // MetadataDS stores metadata. By default it's namespaced under /metadata in
@@ -67,17 +66,6 @@ type (
 
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
-
-type ClientImportMgr *imports.Manager
-type ClientBlockstore blockstore.BasicBlockstore
-type ClientDealStore *statestore.StateStore
-type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
-type ClientDatastore datastore.Batching
-
-type Graphsync graphsync.GraphExchange
-
-// ClientDataTransfer is a data transfer manager for the client
-type ClientDataTransfer datatransfer.Manager
 
 type ProviderDealStore *statestore.StateStore
 type ProviderPieceStore piecestore.PieceStore

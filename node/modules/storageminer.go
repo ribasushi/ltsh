@@ -15,9 +15,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	"github.com/ipfs/go-graphsync/storeutil"
 	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
@@ -465,28 +462,6 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 	}
 
 	return blockstore.FromDatastore(stagingds), nil
-}
-
-// StagingGraphsync creates a graphsync instance which reads and writes blocks
-// to the StagingBlockstore
-func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForStoragePerPeer uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
-		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-		lsys := storeutil.LinkSystemForBlockstore(ibs)
-		gs := graphsync.New(helpers.LifecycleCtx(mctx, lc),
-			graphsyncNetwork,
-			lsys,
-			graphsync.RejectAllRequestsByDefault(),
-			graphsync.MaxInProgressIncomingRequests(parallelTransfersForRetrieval),
-			graphsync.MaxInProgressIncomingRequestsPerPeer(parallelTransfersForStoragePerPeer),
-			graphsync.MaxInProgressOutgoingRequests(parallelTransfersForStorage),
-			graphsync.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
-			graphsync.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
-
-		graphsyncStats(mctx, lc, gs)
-
-		return gs
-	}
 }
 
 func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api v1api.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {

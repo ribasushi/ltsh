@@ -103,12 +103,10 @@ const (
 
 	RunHelloKey
 	RunChainExchangeKey
-	RunChainGraphsync
 	RunPeerMgrKey
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
-	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 
 	// miner

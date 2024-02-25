@@ -85,54 +85,6 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Client": {
-		{
-			Name: "UseIpfs",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsOnlineMode",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsMAddr",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsUseForRetrieval",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "SimultaneousTransfersForStorage",
-			Type: "uint64",
-
-			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers for storage deals`,
-		},
-		{
-			Name: "SimultaneousTransfersForRetrieval",
-			Type: "uint64",
-
-			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers for retrieval deals`,
-		},
-		{
-			Name: "OffChainRetrieval",
-			Type: "bool",
-
-			Comment: `Require that retrievals perform no on-chain operations. Paid retrievals
-without existing payment channels with available funds will fail instead
-of automatically performing on-chain operations.`,
-		},
-	},
 	"Common": {
 		{
 			Name: "API",
@@ -478,12 +430,6 @@ Set to 0 to keep all mappings`,
 		},
 	},
 	"FullNode": {
-		{
-			Name: "Client",
-			Type: "Client",
-
-			Comment: ``,
-		},
 		{
 			Name: "Wallet",
 			Type: "Wallet",

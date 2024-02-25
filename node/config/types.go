@@ -22,7 +22,6 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client        Client
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
@@ -723,25 +722,6 @@ type Splitstore struct {
 	// is set.  Moving GC will not occur when total moving size exceeds
 	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
 	HotstoreMaxSpaceSafetyBuffer uint64
-}
-
-// // Full Node
-type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for storage deals
-	SimultaneousTransfersForStorage uint64
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for retrieval deals
-	SimultaneousTransfersForRetrieval uint64
-
-	// Require that retrievals perform no on-chain operations. Paid retrievals
-	// without existing payment channels with available funds will fail instead
-	// of automatically performing on-chain operations.
-	OffChainRetrieval bool
 }
 
 type Wallet struct {
