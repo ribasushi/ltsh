@@ -101,7 +101,6 @@ require (
 	github.com/ipld/go-codec-dagpb v1.6.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
-	github.com/ipni/go-libipni v0.0.8
 	github.com/ipni/index-provider v0.12.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.4.1
@@ -241,6 +240,7 @@ require (
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
 	github.com/ipld/go-ipld-adl-hamt v0.0.0-20220616142416-9004dbd839e0 // indirect
+	github.com/ipni/go-libipni v0.0.8 // indirect
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
