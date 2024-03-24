@@ -444,45 +444,6 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq time.Duration, check func() error) error {
-	b.lockDB()
-	defer b.unlockDB()
-
-	// compact first to gather the necessary statistics for GC
-	nworkers := runtime.NumCPU() / 2
-	if nworkers < 2 {
-		nworkers = 2
-	}
-	if nworkers > 7 { // max out at 1 goroutine per badger level
-		nworkers = 7
-	}
-
-	err := b.db.Flatten(nworkers)
-	if err != nil {
-		return err
-	}
-	checkTick := time.NewTimer(checkFreq)
-	defer checkTick.Stop()
-	for err == nil {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-		case <-checkTick.C:
-			err = check()
-			checkTick.Reset(checkFreq)
-		default:
-			err = b.db.RunValueLogGC(threshold)
-		}
-	}
-
-	if err == badger.ErrNoRewrite {
-		// not really an error in this case, it signals the end of GC
-		return nil
-	}
-
-	return err
-}
-
 // CollectGarbage compacts and runs garbage collection on the value log;
 // implements the BlockstoreGC trait
 func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
@@ -502,92 +463,19 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 	if options.FullGC {
 		return b.movingGC()
 	}
-	threshold := options.Threshold
-	if threshold == 0 {
-		threshold = defaultGCThreshold
-	}
-	checkFreq := options.CheckFreq
-	if checkFreq < 30*time.Second { // disallow checking more frequently than block time
-		checkFreq = 30 * time.Second
-	}
-	check := options.Check
-	if check == nil {
-		check = func() error {
-			return nil
-		}
-	}
-	return b.onlineGC(ctx, threshold, checkFreq, check)
+
+	return xerrors.New("Method CollectGarbage() not implemented for online GC")
 }
 
 // GCOnce runs garbage collection on the value log;
 // implements BlockstoreGCOnce trait
 func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	var options blockstore.BlockstoreGCOptions
-	for _, opt := range opts {
-		err := opt(&options)
-		if err != nil {
-			return err
-		}
-	}
-	if options.FullGC {
-		return xerrors.Errorf("FullGC option specified for GCOnce but full GC is non incremental")
-	}
-
-	threshold := options.Threshold
-	if threshold == 0 {
-		threshold = defaultGCThreshold
-	}
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	// Note no compaction needed before single GC as we will hit at most one vlog anyway
-	err := b.db.RunValueLogGC(threshold)
-	if err == badger.ErrNoRewrite {
-		// not really an error in this case, it signals the end of GC
-		return nil
-	}
-
-	return err
+	return xerrors.New("Method GCOnce() not implemented")
 }
 
 // Size returns the aggregate size of the blockstore
 func (b *Blockstore) Size() (int64, error) {
-	if err := b.access(); err != nil {
-		return 0, err
-	}
-	defer b.viewers.Done()
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	lsm, vlog := b.db.Size()
-	size := lsm + vlog
-
-	if size == 0 {
-		// badger reports a 0 size on symlinked directories... sigh
-		dir := b.opts.Dir
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return 0, err
-		}
-
-		for _, e := range entries {
-			path := filepath.Join(dir, e.Name())
-			finfo, err := os.Stat(path)
-			if err != nil {
-				return 0, err
-			}
-			size += finfo.Size()
-		}
-	}
-
-	return size, nil
+	return -1, xerrors.New("Method Size() not implemented")
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
@@ -698,36 +586,13 @@ func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 }
 
 // GetSize implements Blockstore.GetSize.
-func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
-	if err := b.access(); err != nil {
-		return 0, err
-	}
-	defer b.viewers.Done()
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	k, pooled := b.PooledStorageKey(cid)
-	if pooled {
-		defer KeyPool.Put(k)
-	}
-
-	var size int
-	err := b.db.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(k); err {
-		case nil:
-			size = int(item.ValueSize())
-		case badger.ErrKeyNotFound:
-			return ipld.ErrNotFound{Cid: cid}
-		default:
-			return fmt.Errorf("failed to get block size from badger blockstore: %w", err)
-		}
+func (b *Blockstore) GetSize(ctx context.Context, c cid.Cid) (retSz int, retErr error) {
+	retSz = -1
+	retErr = b.View(ctx, c, func(b []byte) error {
+		retSz = len(b)
 		return nil
 	})
-	if err != nil {
-		size = -1
-	}
-	return size, err
+	return
 }
 
 // Put implements Blockstore.Put.
@@ -870,22 +735,7 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 
 // DeleteBlock implements Blockstore.DeleteBlock.
 func (b *Blockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	k, pooled := b.PooledStorageKey(cid)
-	if pooled {
-		defer KeyPool.Put(k)
-	}
-
-	return b.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(k)
-	})
+	return xerrors.New("Method DeleteBlock() not implemented")
 }
 
 func (b *Blockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
@@ -932,58 +782,7 @@ func (b *Blockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 
 // AllKeysChan implements Blockstore.AllKeysChan.
 func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	if err := b.access(); err != nil {
-		return nil, err
-	}
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	txn := b.db.NewTransaction(false)
-	opts := badger.IteratorOptions{PrefetchSize: 100}
-	if b.prefixing {
-		opts.Prefix = b.prefix
-	}
-	iter := txn.NewIterator(opts)
-
-	ch := make(chan cid.Cid)
-	go func() {
-		defer b.viewers.Done()
-		defer close(ch)
-		defer iter.Close()
-
-		// NewCidV1 makes a copy of the multihash buffer, so we can reuse it to
-		// contain allocs.
-		var buf []byte
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			if ctx.Err() != nil {
-				return // context has fired.
-			}
-			if !b.isOpen() {
-				// open iterators will run even after the database is closed...
-				return // closing, yield.
-			}
-			k := iter.Item().Key()
-			if b.prefixing {
-				k = k[b.prefixLen:]
-			}
-
-			if reqlen := base32.RawStdEncoding.DecodedLen(len(k)); len(buf) < reqlen {
-				buf = make([]byte, reqlen)
-			}
-			if n, err := base32.RawStdEncoding.Decode(buf, k); err == nil {
-				select {
-				case ch <- cid.NewCidV1(cid.Raw, buf[:n]):
-				case <-ctx.Done():
-					return
-				}
-			} else {
-				log.Warnf("failed to decode key %s in badger AllKeysChan; err: %s", k, err)
-			}
-		}
-	}()
-
-	return ch, nil
+	return nil, xerrors.New("Method AllKeysChan() not implemented")
 }
 
 // Implementation of BlockstoreIterator interface
@@ -1065,31 +864,6 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	copy(k, b.prefix)
 	base32.RawStdEncoding.Encode(k[b.prefixLen:], h)
 	return k, true // slicing upto length unnecessary; the pool has already done this.
-}
-
-// Storage acts like PooledStorageKey, but attempts to write the storage key
-// into the provided slice. If the slice capacity is insufficient, it allocates
-// a new byte slice with enough capacity to accommodate the result. This method
-// returns the resulting slice.
-func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
-	h := cid.Hash()
-	reqsize := base32.RawStdEncoding.EncodedLen(len(h)) + b.prefixLen
-	if reqsize > cap(dst) {
-		// passed slice is smaller than required size; create new.
-		dst = make([]byte, reqsize)
-	} else if reqsize > len(dst) {
-		// passed slice has enough capacity, but its length is
-		// restricted, expand.
-		dst = dst[:cap(dst)]
-	}
-
-	if b.prefixing { // optimize for branch prediction.
-		copy(dst, b.prefix)
-		base32.RawStdEncoding.Encode(dst[b.prefixLen:], h)
-	} else {
-		base32.RawStdEncoding.Encode(dst, h)
-	}
-	return dst[:reqsize]
 }
 
 // this method is added for lotus-shed needs
