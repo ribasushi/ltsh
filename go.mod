@@ -15,6 +15,7 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // pro
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.6.0
+	github.com/DataDog/zstd v1.5.7
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/Masterminds/semver/v3 v3.5.0
