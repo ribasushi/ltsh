@@ -584,45 +584,6 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq time.Duration, check func() error) error {
-	b.lockDB()
-	defer b.unlockDB()
-
-	// compact first to gather the necessary statistics for GC
-	nworkers := runtime.NumCPU() / 2
-	if nworkers < 2 {
-		nworkers = 2
-	}
-	if nworkers > 7 { // max out at 1 goroutine per badger level
-		nworkers = 7
-	}
-
-	err := b.db.Flatten(nworkers)
-	if err != nil {
-		return err
-	}
-	checkTick := time.NewTimer(checkFreq)
-	defer checkTick.Stop()
-	for err == nil {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-		case <-checkTick.C:
-			err = check()
-			checkTick.Reset(checkFreq)
-		default:
-			err = b.db.RunValueLogGC(threshold)
-		}
-	}
-
-	if err == badger.ErrNoRewrite {
-		// not really an error in this case, it signals the end of GC
-		return nil
-	}
-
-	return err
-}
-
 // CollectGarbage compacts and runs garbage collection on the value log;
 // implements the BlockstoreGC trait
 func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
@@ -642,58 +603,14 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 	if options.FullGC {
 		return b.movingGC(ctx)
 	}
-	threshold := options.Threshold
-	if threshold == 0 {
-		threshold = defaultGCThreshold
-	}
-	checkFreq := options.CheckFreq
-	if checkFreq < 30*time.Second { // disallow checking more frequently than block time
-		checkFreq = 30 * time.Second
-	}
-	check := options.Check
-	if check == nil {
-		check = func() error {
-			return nil
-		}
-	}
-	return b.onlineGC(ctx, threshold, checkFreq, check)
+
+	return xerrors.New("blockstore does not support CollectGarbage() for online GC")
 }
 
 // GCOnce runs garbage collection on the value log;
 // implements BlockstoreGCOnce trait
 func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	var options blockstore.BlockstoreGCOptions
-	for _, opt := range opts {
-		err := opt(&options)
-		if err != nil {
-			return err
-		}
-	}
-	if options.FullGC {
-		return xerrors.Errorf("FullGC option specified for GCOnce but full GC is non incremental")
-	}
-
-	threshold := options.Threshold
-	if threshold == 0 {
-		threshold = defaultGCThreshold
-	}
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	// Note no compaction needed before single GC as we will hit at most one vlog anyway
-	err := b.db.RunValueLogGC(threshold)
-	if err == badger.ErrNoRewrite {
-		// not really an error in this case, it signals the end of GC
-		return nil
-	}
-
-	return err
+	return xerrors.New("blockstore does not support the GCOnce() method")
 }
 
 // Size returns the aggregate size of the blockstore
