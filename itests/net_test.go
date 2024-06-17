@@ -48,12 +48,12 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("agents not matching. %s", err.Error())
 	}
 
-	secondNodePeer, err := firstNode.NetFindPeer(ctx, secondNodeID)
-	require.NoError(t, err)
+	// secondNodePeer, err := firstNode.NetFindPeer(ctx, secondNodeID)
+	// require.NoError(t, err)
 
-	if secondNodePeer.ID != addrInfo.ID {
-		t.Errorf("peer id doesn't match with listen address.")
-	}
+	// if secondNodePeer.ID != addrInfo.ID {
+	// 	t.Errorf("peer id doesn't match with listen address.")
+	// }
 
 	connState = getConnState(ctx, t, firstNode, secondNodeID)
 

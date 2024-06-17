@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/libp2p/go-libp2p/core/protocol"
-
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -16,9 +14,6 @@ import (
 
 func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
 func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
-func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
-	return protocol.ID("/fil/kad/" + string(netName))
-}
 
 // Deprecated: Use buildconstants.SetAddressNetwork instead.
 var SetAddressNetwork = buildconstants.SetAddressNetwork
