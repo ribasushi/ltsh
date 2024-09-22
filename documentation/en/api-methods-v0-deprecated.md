@@ -4914,6 +4914,7 @@ Response:
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
     "UpgradeWaffleHeight": 10101,
+    "UpgradeEvrthngBrnsHeight": 10101,
     "UpgradeTuktukHeight": 10101,
     "UpgradeTeepHeight": 10101,
     "UpgradeTockHeight": 10101,

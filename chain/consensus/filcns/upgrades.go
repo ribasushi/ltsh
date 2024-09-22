@@ -321,6 +321,10 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
+		Height:    buildconstants.UpgradeEverythingBurnsHeight,
+		Network:   network.Version23,
+		Migration: UpgradeEverythingBurns,
+	}, {
 		Height:    buildconstants.UpgradeTuktukHeight,
 		Network:   network.Version24,
 		Migration: UpgradeActorsV15,
@@ -2645,6 +2649,66 @@ func upgradeActorsV14Common(
 	}
 
 	return newRoot, nil
+}
+
+func UpgradeEverythingBurns(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, em stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+
+	tree, err := sm.StateTree(root)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+	}
+
+	subcalls := make([]types.ExecutionTrace, 0)
+	transferCb := func(trace types.ExecutionTrace) {
+		subcalls = append(subcalls, trace)
+	}
+
+	reserveAct, err := tree.GetActor(builtin.ReserveAddress)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load mining reserve actor: %w", err)
+	}
+	if err := stmgr.DoTransfer(tree, builtin.ReserveAddress, builtin0.BurntFundsActorAddr, reserveAct.Balance, transferCb); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to burn reserve: %w", err)
+	}
+
+	// Now, a final sanity check to make sure the balances all check out
+	total := abi.NewTokenAmount(0)
+	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
+		total = types.BigAdd(total, act.Balance)
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("checking final state balance failed: %w", err)
+	}
+
+	exp := types.FromFil(buildconstants.FilBase)
+	if !exp.Equals(total) {
+		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
+	}
+
+	if em != nil {
+		// record the transfer in execution traces
+
+		fakeMsg := stmgr.MakeFakeMsg(builtin.SystemActorAddr, builtin.SystemActorAddr, big.Zero(), uint64(epoch))
+
+		if err := em.MessageApplied(ctx, ts, fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
+			MessageReceipt: *stmgr.MakeFakeRct(),
+			ActorErr:       nil,
+			ExecutionTrace: types.ExecutionTrace{
+				Msg: types.MessageTrace{
+					To:   fakeMsg.To,
+					From: fakeMsg.From,
+				},
+				Subcalls: subcalls,
+			},
+			Duration: 0,
+			GasCosts: nil,
+		}, false); err != nil {
+			return cid.Undef, xerrors.Errorf("recording transfers: %w", err)
+		}
+	}
+
+	return tree.Flush(ctx)
 }
 
 // PreUpgradeActorsV15 runs the premigration for v15 actors. Note that this migration contains no
