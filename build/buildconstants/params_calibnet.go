@@ -99,6 +99,9 @@ const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = 1493854
 // 2024-07-11T12:00:00Z
 const UpgradeWaffleHeight abi.ChainEpoch = 1779094
 
+// ?????
+const UpgradeEverythingBurnsHeight = -1 // 2077594 // https://github.com/88phnx88/lotus#everythingburns
+
 // 2024-10-23T13:30:00Z
 const UpgradeTuktukHeight abi.ChainEpoch = 2078794
 

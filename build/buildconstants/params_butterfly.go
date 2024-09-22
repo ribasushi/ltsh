@@ -66,6 +66,7 @@ const UpgradeDragonHeight = -25
 const UpgradeCalibrationDragonFixHeight = -102
 const UpgradePhoenixHeight = -26
 const UpgradeWaffleHeight = -27
+const UpgradeEverythingBurnsHeight = -28
 const UpgradeTuktukHeight = -28
 
 // FIP-0081: for the power actor state for pledge calculations.

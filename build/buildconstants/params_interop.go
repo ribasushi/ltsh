@@ -66,6 +66,7 @@ const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -3
 
 var UpgradePhoenixHeight = abi.ChainEpoch(-26)
 var UpgradeWaffleHeight = abi.ChainEpoch(-27)
+var UpgradeEverythingBurnsHeight = abi.ChainEpoch(-28)
 var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 
 // FIP-0081: for the power actor state for pledge calculations.
