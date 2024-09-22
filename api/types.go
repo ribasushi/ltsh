@@ -192,6 +192,7 @@ type ForkUpgradeParams struct {
 	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
 	UpgradeWaffleHeight      abi.ChainEpoch
+	UpgradeEvrthngBrnsHeight abi.ChainEpoch
 	UpgradeTuktukHeight      abi.ChainEpoch
 	UpgradeTeepHeight        abi.ChainEpoch
 	UpgradeTockHeight        abi.ChainEpoch
